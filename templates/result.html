@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hospital Recommendation</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background: linear-gradient(135deg, #eef2ff, #ffffff);
+      margin: 0;
+      padding: 30px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 25px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+      margin-bottom: 25px;
+    }
+
+    .top-hospital {
+      border-left: 6px solid #16a34a;
+    }
+
+    .hospital-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .hospital-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 15px;
+    }
+
+    .badge {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    #map {
+      height: 400px;
+      border-radius: 12px;
+      margin-top: 15px;
+    }
+
+    .chart-note {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    #assistant-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0d6efd;
+      color: white;
+      padding: 14px 18px;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+      z-index: 2000;
+    }
+
+    #chatbot-container {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 320px;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 25px 55px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 2000;
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+      pointer-events: none;
+      transition: all 0.35s ease;
+    }
+
+    #chatbot-container.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    #chat-header {
+      background: #0d6efd;
+      color: white;
+      padding: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    #chat-body {
+      padding: 12px;
+      height: 220px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+
+    #chat-input {
+      display: flex;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    #chat-input input {
+      flex: 1;
+      border: none;
+      padding: 10px;
+      outline: none;
+    }
+
+    #chat-input button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ================= RESULTS HEADER ================= -->
+<div class="results-header">
+  <div class="results-header-content">
+
+    <h1>Hospital Recommendations</h1>
+
+    <p class="results-subtitle">
+      Showing results for
+      <strong>{{ emergency }}</strong>
+      emergency in
+      <strong>{{ hospitals[0]['city'] | title if hospitals|length > 0 else "Selected Location" }}</strong>
+    </p>
+
+  </div>
+</div>
+<!-- ================================================== -->
+
+<!-- ================= MEDICAL RECOMMENDATION BANNER ================= -->
+<div class="medical-alert {{ severity|lower }}">
+  <div class="alert-header">
+    <div class="alert-icon">
+      {% if severity == "High" %}
+        🚨
+      {% elif severity == "Moderate" %}
+        ⚠️
+      {% else %}
+        ℹ️
+      {% endif %}
+    </div>
+
+    <div>
+      <span class="alert-badge">
+        {{ severity }}
+      </span>
+
+      <h2 class="alert-title">
+        {% if severity == "High" %}
+          🚑 Immediate Medical Attention Required
+        {% elif severity == "Moderate" %}
+          🩺 Prompt Medical Attention Recommended
+        {% else %}
+          🧘 Monitor Symptoms & Seek Care if Needed
+        {% endif %}
+      </h2>
+    </div>
+  </div>
+
+  <p class="alert-description">
+    {% if severity == "High" %}
+      Your condition may be serious and requires urgent professional evaluation.
+      Please seek emergency medical care immediately.
+    {% elif severity == "Moderate" %}
+      Your condition warrants professional evaluation soon.
+      While not immediately life-threatening, do not delay seeking care.
+    {% else %}
+      Your condition appears stable at this time.
+      Monitor symptoms and seek medical attention if they worsen.
+    {% endif %}
+  </p>
+
+  <div class="alert-steps">
+    <h4>📋 Recommended Next Steps:</h4>
+    <ol>
+      <li>🏥 Visit the recommended hospital listed below</li>
+      <li>📄 Carry current medical reports and prescriptions</li>
+      <li>👥 If possible, have someone accompany you</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+
+
+{% if hospitals|length > 0 %}
+
+<div class="hospital-ui-card top-hospital-card"
+     data-lat="{{ hospitals[0]['latitude'] }}"
+     data-lon="{{ hospitals[0]['longitude'] }}">
+
+  <!-- Header -->
+  <div class="card-header">
+  <span class="rank">🥇 #1</span>
+  <span class="tag">🏥 {{ hospitals[0]['hospital_level'] }}</span>
+  <span class="best-match-badge">⭐ Best Match</span>
+</div>
+
+
+  <!-- Name -->
+  <h4 class="hospital-name">
+    {{ hospitals[0]['hospital_name'] }}
+  </h4>
+
+  <!-- Address -->
+  <p class="address">
+    📍 {{ hospitals[0]['address'] if hospitals[0]['address'] else "Nearby location" }}
+  </p>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-box">
+      <span class="stat-label">🛏️ ICU Beds</span>
+
+      <span class="stat-value">{{ hospitals[0]['icu_beds'] }}</span>
+    </div>
+
+    <div class="stat-box">
+      <span class="stat-label">📈 ICU Load</span>
+
+      {% if hospitals[0]['current_icu_load_percent'] < 50 %}
+        <span class="stat-value success">
+          {{ hospitals[0]['current_icu_load_percent'] }}%
+        </span>
+        <div class="progress">
+          <div class="progress-bar success"
+               style="width: {{ hospitals[0]['current_icu_load_percent'] }}%"></div>
+        </div>
+      {% elif hospitals[0]['current_icu_load_percent'] < 75 %}
+        <span class="stat-value warning">
+          {{ hospitals[0]['current_icu_load_percent'] }}%
+        </span>
+        <div class="progress">
+          <div class="progress-bar warning"
+               style="width: {{ hospitals[0]['current_icu_load_percent'] }}%"></div>
+        </div>
+      {% else %}
+        <span class="stat-value danger">
+          {{ hospitals[0]['current_icu_load_percent'] }}%
+        </span>
+        <div class="progress">
+          <div class="progress-bar danger"
+               style="width: {{ hospitals[0]['current_icu_load_percent'] }}%"></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Distance -->
+  <div class="distance">
+    <span>Estimated Distance</span>
+    <strong class="distance-text">Calculating…</strong>
+  </div>
+
+ <!-- Actions -->
+<div class="actions">
+
+  <!-- Emergency Call Button -->
+  <button
+    class="direction-btn emergency-call"
+    onclick="copyEmergencyNumber()">
+    🚨 Call Emergency (112)
+  </button>
+
+  <!-- Directions -->
+  <a
+    href="https://www.google.com/maps/dir/?api=1&destination={{ hospitals[0]['latitude'] }},{{ hospitals[0]['longitude'] }}"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="direction-btn">
+    📍 Directions
+  </a>
+
+</div>
+
+</div>
+
+
+<section class="hospital-section card">
+  <h3>📋 Other Suitable Hospitals</h3>
+
+
+  <div class="hospital-cards">
+
+    {% for h in hospitals[1:] %}
+<div class="hospital-ui-card"
+     data-lat="{{ h.latitude }}"
+     data-lon="{{ h.longitude }}">
+
+  <div class="card-header">
+    <span class="rank">#{{ loop.index + 1 }}</span>
+    <span class="tag">{{ h.hospital_level }}</span>
+  </div>
+
+  <h4 class="hospital-name">{{ h.hospital_name }}</h4>
+
+  <p class="address">
+    📍 {{ h.address if h.address else "Nearby location" }}
+  </p>
+
+  <div class="stats">
+    <div class="stat-box">
+      <span class="stat-label">🛏️ICU Beds</span>
+
+      <span class="stat-value">{{ h.icu_beds }}</span>
+    </div>
+
+    <div class="stat-box">
+      <span class="stat-label">📈 ICU Load</span>
+
+
+      {% if h.current_icu_load_percent < 50 %}
+        <span class="stat-value success">{{ h.current_icu_load_percent }}%</span>
+        <div class="progress">
+          <div class="progress-bar success"
+               style="width: {{ h.current_icu_load_percent }}%"></div>
+        </div>
+      {% elif h.current_icu_load_percent < 75 %}
+        <span class="stat-value warning">{{ h.current_icu_load_percent }}%</span>
+        <div class="progress">
+          <div class="progress-bar warning"
+               style="width: {{ h.current_icu_load_percent }}%"></div>
+        </div>
+      {% else %}
+        <span class="stat-value danger">{{ h.current_icu_load_percent }}%</span>
+        <div class="progress">
+          <div class="progress-bar danger"
+               style="width: {{ h.current_icu_load_percent }}%"></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="distance">
+    <span>Estimated Distance</span>
+    <strong class="distance-text">Calculating…</strong>
+  </div>
+
+  <div class="actions">
+  <button
+  class="direction-btn emergency-call"
+  onclick="copyEmergencyNumber()">
+  🚨 Call Emergency
+</button>
+
+  <a
+    href="https://www.google.com/maps/dir/?api=1&destination={{ h.latitude }},{{ h.longitude }}"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="direction-btn">
+    📍 Directions
+  </a>
+</div>
+
+
+</div>
+{% endfor %}
+
+
+  </div>
+</section>
+
+
+<div class="card">
+  <h3>🗺️ Mapped Hospital Locations for Quick Access</h3>
+
+
+  <div id="map"></div>
+</div>
+
+<div class="icu-grid">
+
+  <!-- LEFT: EXISTING ICU CHART (UNCHANGED) -->
+  <div class="card chart-card">
+    <h3>📊 ICU Load Comparison</h3>
+
+
+    <div class="chart-wrapper">
+      <canvas id="icuChart"></canvas>
+    </div>
+    <p>
+
+
+    </P>
+
+    <p class="chart-note">
+  🟢 Lower ICU load indicates higher availability and faster access to critical care
+</p>
+
+  </div>
+
+  
+  <!-- RIGHT: NEW CONTENT (FILLS BLANK SPACE) -->
+  <div class="icu-section-wrapper">
+  <div class="icu-grid">
+
+    
+    <!-- RIGHT: EXPLANATION -->
+    <div class="card icu-card">
+      <h3>✅ Why This Hospital Was Recommended</h3>
+
+<ul class="reason-list">
+  <li>Selected due to <strong>lower ICU load</strong>, ensuring quicker admission</li>
+  <li>Matches the selected <strong>emergency type</strong></li>
+  <li>Sufficient <strong>ICU bed availability</strong></li>
+  <li>Closer location for <strong>faster reach</strong></li>
+  <li>Appropriate <strong>hospital care level</strong></li>
+</ul>
+
+<hr />
+
+<h4>🏥 Top Hospital Summary</h4>
+
+<ul class="summary-list">
+  <li><strong>Hospital Name:</strong> {{ hospitals[0]['hospital_name'] }}</li>
+  <li><strong>🛏️ ICU Beds:</strong> {{ hospitals[0]['icu_beds'] }}</li>
+  <li>
+    <strong>📊 ICU Load:</strong>
+    {% if hospitals[0]['current_icu_load_percent'] < 50 %}
+      🟢 {{ hospitals[0]['current_icu_load_percent'] }}%
+    {% elif hospitals[0]['current_icu_load_percent'] < 75 %}
+      🟡 {{ hospitals[0]['current_icu_load_percent'] }}%
+    {% else %}
+      🔴 {{ hospitals[0]['current_icu_load_percent'] }}%
+    {% endif %}
+  </li>
+  <li><strong>🏥 Care Level:</strong> {{ hospitals[0]['hospital_level'] }}</li>
+</ul>
+
+
+  </div>
+</div>
+
+
+</div>
+
+
+{% endif %}
+
+
+<!-- CHATBOT FLOAT BUTTON -->
+<div id="assistant-btn" onclick="toggleChat()">
+  💬 Hospital Assistant
+</div>
+
+<!-- CHATBOT -->
+<div id="chatbot-container" class="chatbot">
+
+  <!-- Header -->
+  <div class="chatbot-header">
+    <div class="header-left">
+      <div class="bot-avatar">🏥</div>
+      <div>
+        <div class="bot-title">Hospital Assistant</div>
+        <div class="bot-subtitle">AI-powered medical guidance</div>
+      </div>
+    </div>
+    <button class="chatbot-close" onclick="toggleChat()">✕</button>
+  </div>
+
+  <!-- Body -->
+  <div id="chat-body" class="chatbot-body">
+    <div class="chat-message bot">
+      <div class="avatar">🤖</div>
+      <div class="chat-bubble">
+        Hello 👋<br>
+        I can help explain hospital recommendations, ICU availability, and next steps.
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="chatbot-footer">
+    <input
+      id="user-message"
+      type="text"
+      placeholder="Ask about ICU load, severity, next steps…"
+    />
+    <button onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+
+
+
+{% if hospitals|length > 0 %}
+<script>
+const hospitals = {{ hospitals | tojson }};
+
+/* MAP */
+const map = L.map("map");
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+const bounds = [];
+hospitals.forEach(h => {
+  L.marker([h.latitude, h.longitude]).addTo(map);
+  bounds.push([h.latitude, h.longitude]);
+});
+map.fitBounds(bounds);
+
+/* ICU LOAD CHART (PROFESSIONAL STYLE) */
+new Chart(document.getElementById("icuChart"), {
+  type: "bar",
+  data: {
+    labels: hospitals.map(h => h.hospital_name),
+    datasets: [{
+      data: hospitals.map(h => h.current_icu_load_percent),
+      backgroundColor: hospitals.map(h =>
+        h.current_icu_load_percent < 50 ? "#22c55e" :
+        h.current_icu_load_percent < 75 ? "#f59e0b" :
+        "#ef4444"
+      ),
+      borderRadius: 8,
+      barThickness: 22
+    }]
+  },
+  options: {
+    indexAxis: "y",
+    responsive: true,
+    plugins: {
+      legend: { display: false }
+    },
+    scales: {
+      x: {
+        min: 0,
+        max: 100,
+        ticks: { callback: v => v + "%" },
+        grid: { borderDash: [4,4] }
+      },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+
+</script>
+{% endif %}
+
+<script>
+function toggleChat() {
+  document.getElementById("chatbot-container").classList.toggle("open");
+}
+</script>
+
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+<script>
+/* Nexus Mall, Bengaluru */
+const NEXUS_LAT = 12.9352;
+const NEXUS_LON = 77.6245;
+
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+
+  return (2 * R * Math.asin(Math.sqrt(a))).toFixed(1);
+}
+
+document.querySelectorAll(".hospital-ui-card").forEach(card => {
+  const lat = parseFloat(card.dataset.lat);
+  const lon = parseFloat(card.dataset.lon);
+
+  if (!isNaN(lat) && !isNaN(lon)) {
+    const distance = haversineDistance(
+      NEXUS_LAT,
+      NEXUS_LON,
+      lat,
+      lon
+    );
+
+    card.querySelector(".distance-text").innerText =
+      `${distance} km from Nexus Mall, Bengaluru`;
+  } else {
+    card.querySelector(".distance-text").innerText =
+      "Distance unavailable";
+  }
+});
+</script>
+
+<script>
+function copyEmergencyNumber() {
+  const number = "112";
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(number).then(() => {
+    alert(
+      "Emergency number copied to clipboard:\n\n" +
+      number +
+      "\n\nYou can paste and call it from your phone."
+    );
+  }).catch(() => {
+    // Fallback if clipboard access fails
+    alert(
+      "Emergency Number: " + number +
+      "\n\nPlease call this number immediately."
+    );
+  });
+}
+</script>
+
+
+</body>
+</html>
