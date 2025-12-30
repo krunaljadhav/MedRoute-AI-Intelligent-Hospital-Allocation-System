@@ -36,7 +36,25 @@ The solution focuses on:
 - ⚠️ Severity-based medical guidance
 
 ---
+## 🖼 Dashboard Screenshots
 
+### Crime in India – Overview
+---
+![Crime Dashboard Overview](Screenshot%202025-12-30%20033006.png)
+
+### Crime Trend & Victim Analysis
+---
+![Crime Trend Analysis](Screenshot%202025-12-30%20033026.png)
+
+### Property Crime Analysis
+---
+![Property Crime Analysis](Screenshot%202025-12-30%20033034.png)
+
+### Area-wise Focused View
+---
+![State Wise Analysis](Screenshot%202025-12-30%20033049.png)
+
+---
 ## 🧠 How the System Works
 
 1. The user selects a city, emergency type, and severity level
