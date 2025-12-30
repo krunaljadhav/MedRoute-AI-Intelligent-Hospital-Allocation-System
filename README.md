@@ -36,21 +36,31 @@ The solution focuses on:
 - ⚠️ Severity-based medical guidance
 
 ---
-## 🖼 Dashboard Screenshots
+## 📸 Application Screenshots
 
-### Crime in India – Overview
+### 🔹 Home Page – Emergency Input & AI Guidance
+![Home Page](./screenshots/Screenshot%202025-12-31%20005542.png)
+
 ---
-![Crime Dashboard Overview](Screenshot%202025-12-30%20033006.png)
 
-### Crime Trend & Victim Analysis
+### 🔹 Hospital Recommendation Results
+![Hospital Recommendations](./screenshots/Screenshot%202025-12-31%20005619.png)
+
 ---
-![Crime Trend Analysis](Screenshot%202025-12-30%20033026.png)
 
-### Property Crime Analysis
+### 🔹 Real-Time Route & Distance Visualization
+![Route Map](./screenshots/Screenshot%202025-12-31%20005647.png)
+
 ---
-![Property Crime Analysis](Screenshot%202025-12-30%20033034.png)
 
-### Area-wise Focused View
+### 🔹 Ranked Hospitals with ICU Load Indicators
+![Other Hospitals](./screenshots/Screenshot%202025-12-31%20005749.png)
+
+---
+
+### 🔹 Interactive Geospatial Map (Leaflet.js)
+![Leaflet Map](./screenshots/Screenshot%202025-12-31%20005820.png)
+
 ---
 ![State Wise Analysis](Screenshot%202025-12-30%20033049.png)
 
