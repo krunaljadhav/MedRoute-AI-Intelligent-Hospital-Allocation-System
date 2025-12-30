@@ -39,30 +39,27 @@ The solution focuses on:
 ## 📸 Application Screenshots
 
 ### 🔹 Home Page – Emergency Input & AI Guidance
-![Home Page](./screenshots/Screenshot%202025-12-31%20005542.png)
+![Home Page](Screenshot%202025-12-31%20005542.png)
 
 ---
 
 ### 🔹 Hospital Recommendation Results
-![Hospital Recommendations](./screenshots/Screenshot%202025-12-31%20005619.png)
+![Hospital Recommendations](Screenshot%202025-12-31%20005619.png)
 
 ---
 
 ### 🔹 Real-Time Route & Distance Visualization
-![Route Map](./screenshots/Screenshot%202025-12-31%20005647.png)
+![Route Map](Screenshot%202025-12-31%20005647.png)
 
 ---
 
 ### 🔹 Ranked Hospitals with ICU Load Indicators
-![Other Hospitals](./screenshots/Screenshot%202025-12-31%20005749.png)
+![Other Hospitals](Screenshot%202025-12-31%20005749.png)
 
 ---
 
 ### 🔹 Interactive Geospatial Map (Leaflet.js)
-![Leaflet Map](./screenshots/Screenshot%202025-12-31%20005820.png)
-
----
-![State Wise Analysis](Screenshot%202025-12-30%20033049.png)
+![Leaflet Map](Screenshot%202025-12-31%20005820.png)
 
 ---
 ## 🧠 How the System Works
@@ -165,6 +162,11 @@ The assistant helps users understand system decisions by answering:
 
 This ensures transparency and explainability in healthcare decision-making.
 
+
+
+---
+### 🔹 Chatbot 
+![Leaflet Map](Screenshot%202025-12-31%20005820.png)
 ---
 
 ## 🎯 Evaluation Highlights
